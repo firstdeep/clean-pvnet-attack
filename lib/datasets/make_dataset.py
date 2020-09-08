@@ -66,7 +66,7 @@ def make_data_loader(cfg, is_train=True, is_distributed=False, max_iter=-1):
         batch_size = cfg.test.batch_size
         shuffle = True if is_distributed else False
         drop_last = False
-
+    # batch_size = cfg.train.batch_size
     dataset_name = cfg.train.dataset if is_train else cfg.test.dataset
 
     transforms = make_transforms(cfg, is_train)

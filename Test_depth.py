@@ -1,8 +1,7 @@
 import math
 import numpy as np
 from scipy.spatial.transform import Rotation as R
-
-
+import torch
 # Checks if a matrix is a valid rotation matrix.
 def isRotationMatrix(R):
     Rt = np.transpose(R)
@@ -44,24 +43,7 @@ def eul2rot(theta) :
 
 
 if __name__ =="__main__":
-    x_angle = math.atan2(-0.708838, -0.671032)
-    z_angle = math.atan2(0.140804, -0.965872)
-    print("x angle is {} \nz angle is {}".format(x_angle, z_angle))
-
-    pose_path = 'data/linemod/driller/pose/pose2.npy'
-    pose = np.load(pose_path)
-
-    pose = pose[:,:3]
-    print(pose)
-    pose_angle = rotationMatrixToEulerAngles(pose)
-    print(pose_angle)
-    print("="*30)
-    R = eul2rot(pose_angle)
-    # x = R.from_euler('zyx', [pose_angle[2],pose_angle[1],pose_angle[0]], degrees=True)
-    # y = R.from_euler('y', pose_angle[1], degrees=True)
-    # z = R.from_euler('z', pose_angle[2], degrees=True)
-    # x_pose = x.as_matrix()
-    # y_pose = y.as_matrix()
-    # z_pose = z.as_matrix()
-    # a = x_pose + y_pose + z_pose
-    print(R)
+    x = torch.randn(1, 4, 4)
+    y = x.view(16)
+    z = x.view(4, 4)
+    print(x.size(), y.size(), z.size())

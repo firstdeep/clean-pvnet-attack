@@ -11,9 +11,12 @@ from lib.utils.linemod.linemod_config import linemod_cls_names, linemod_K, blend
 import matplotlib.pyplot as plt
 import glob
 import math
-pose_target = np.zeros((3, 4))
-pose_target[0, 3] = 0.02 # 30mm 이동
-pose_target[1, 3] = 0.02 # 30mm 이동
+
+def r2d(x):
+    return x * 180.0 / np.pi
+
+def d2r(x):
+    return x * np.pi / 180.0
 
 
 # Calculates rotation matrix to euler angles
@@ -182,20 +185,36 @@ def record_real_ann(model_meta, img_id, ann_id, images, annotations):
 
         pose_path = os.path.join(pose_dir, 'pose{}.npy'.format(ind))
         pose = np.load(pose_path)
-
         ##############################################
-        pose = pose + pose_target
-        # pose_rotation  = pose[:,:3]
-        # pose_angle = rot2eul(pose_rotation)
-        # pose_angle[1] = pose_angle[1]+5.0
-        # pose_re = eul2rot(pose_angle)
-        # pose[:,:3] = pose_re
+        # Translation
+        # pose[0, 3] += 0.01  # 20mm
+        # pose[1, 3] += 0.01  # 20mm
+
+        # Rotation
+        pose_rotation = pose[:,:3]
+
+        pose_angel_ro, _ = cv2.Rodrigues(pose_rotation)
+        # X,Y,Z 축으로 7도 이동
+        print("\n Original angle")
+        print(r2d(pose_angel_ro))
+        pose_angel_ro[0] += d2r(38)
+        # pose_angel_ro[1] += d2r(20)
+        # pose_angel_ro[2] += d2r(30)
+
+        print("\n Modified angle")
+        print(r2d(pose_angel_ro))
+
+        pose_ro, _ = cv2.Rodrigues(pose_angel_ro)
+
+        pose[:,:3] = pose_ro
         ##############################################
         corner_2d = project(corner_3d, K, pose)
         center_2d = project(center_3d[None], K, pose)[0]
         fps_2d = project(fps_3d, K, pose)
 
         mask_path = os.path.join(data_root, cls, 'mask', '{:04d}.png'.format(ind))
+        gt_path = os.path.join(data_root, cls, 'corner_2d_gt', '{:04d}.npy'.format(ind))
+        # np.save(gt_path, corner_2d)
 
         ann_id += 1
         depth_path = os.path.join('data/linemod_orig', cls, 'data', 'depth{}.dpt'.format(ind))
@@ -241,12 +260,16 @@ def record_fuse_ann(model_meta, img_id, ann_id, images, annotations):
         begins, poses = read_pickle(os.path.join(fuse_dir, '{}_info.pkl'.format(ind)))
         pose = poses[cls_idx]
         ##############################################
-        pose = pose + pose_target
-        # pose_rotation  = pose[:,:3]
-        # pose_angle = rot2eul(pose_rotation)
-        # pose_angle[1] = pose_angle[1]+5.0
-        # pose_re = eul2rot(pose_angle)
-        # pose[:,:3] = pose_re
+        # pose = pose + pose_target
+        # pose_rotation = pose[:, :3]
+        #
+        # pose_angel_ro, _ = cv2.Rodrigues(pose_rotation)
+        # # X 축으로 5도 이동
+        # pose_angel_ro[0] += d2r(5)
+        #
+        # pose_ro, _ = cv2.Rodrigues(pose_angel_ro)
+        #
+        # pose[:, :3] = pose_ro
         ##############################################
 
         K = original_K.copy()

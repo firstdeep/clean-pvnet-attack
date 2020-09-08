@@ -26,9 +26,9 @@ import os
 mean = pvnet_config.mean
 std = pvnet_config.std
 
-eps = 5.0 # 0.2. 0.5, 0.8, 1.0
-alpha = 5.0 # 2.0, 3.0, 4.0, 5.0
-iteration = 60
+eps = 0.2
+alpha = 20.0 # 2.0, 3.0, 4.0, 5.0
+iteration = 120
 
 def where(cond, x, y):
     """
@@ -62,24 +62,22 @@ def run_attack():
     load_network(network, cfg.model_dir, resume=cfg.resume, epoch=cfg.test.epoch)
 
     data_loader = make_data_loader(cfg, is_train=False)
-
     for batch in tqdm.tqdm(data_loader):
 
         batch = to_cuda(batch)
         batch_size = len(batch['inp'])
 
         path_list = []
+        count = 0
         for list_idx in batch['path']:
             path = list_idx.split('/')
-            path[3] = "JPEGImages_plz"
-            temp = '/'.join(path)
-            path_list.append(temp)
-            path_check = '/'.join(path[:4])
+            path[3] = "JPEGImages_xyz"
+            path_list[count] = '/'.join(path)
+            lsit_check = '/'.join(path_list[:3])
+            count += 1
 
-        Pertur_path = os.path.join(path_check,"Perturbation")
-        if not os.path.isdir(path_check):
-            os.mkdir(path_check)
-            os.mkdir(Pertur_path)
+        if not os.path.isdir(lsit_check):
+            os.mkdir(lsit_check)
 
         input = Variable(batch['inp'], requires_grad=True)
 
@@ -93,7 +91,7 @@ def run_attack():
             weight = batch['mask'][:, None].float()
             vote_loss = torch.nn.functional.smooth_l1_loss(output['vertex'] * weight, batch['vertex'] * weight, reduction='sum')
             vote_loss = vote_loss / weight.sum() / batch['vertex'].size(1)
-            loss += vote_loss * 10.0
+            loss += vote_loss * 1.4
 
             mask = batch['mask'].long()
             seg_loss = nn.CrossEntropyLoss()(output['seg'], mask)
@@ -109,26 +107,21 @@ def run_attack():
 
             input = Variable(input.data, requires_grad=True)
 
-            if i % 10 == 0:
-                print("* Step {}".format(i))
-                Pertur = batch['inp'][0] - input[0]
-                Pertur = Pertur.permute(1, 2, 0)
-                Pertur_50 = Pertur.cpu().detach().numpy() * 50
-                cv2.imwrite(Pertur_path+"/Perturbation.jpg", Pertur_50*255.0)
+            # if i % 10 == 0 :
+            #     print("* Step {}".format(i))
+            #     Pertur = batch['inp'][0] - input[0]
+            #     Pertur = Pertur.permute(1, 2, 0)
+            #     Pertur_50 = Pertur.cpu().detach().numpy() * 50
+            #     cv2.imwrite(lsit_check+"/Perturbation.jpg", Pertur_50*255.0)
         ###################################################################################
 
         for idx in range(batch_size):
-            path_re = path_list[idx].split('/')
-            P = path_re[4]
-            add_P = P[:6] + "_all" + P[6:]
+            inp = img_utils.unnormalize_img(batch['inp'][0].cpu(), mean, std).permute(1, 2, 0)
+            img = img_utils.unnormalize_img(input[0].cpu(), mean, std).permute(1, 2, 0)
 
-            inp = img_utils.unnormalize_img(batch['inp'][idx].cpu(), mean, std).permute(1, 2, 0)
-            img = img_utils.unnormalize_img(input[idx].cpu(), mean, std).permute(1, 2, 0)
-
-            Pertur = batch['inp'][idx] - input[idx]
-            Pertur = Pertur.permute(1, 2, 0)
-            Pertur = Pertur.cpu().detach().numpy()
-            Pertur = cv2.cvtColor(Pertur, cv2.COLOR_BGR2RGB)
+            Pertur = batch['inp'][0] - input[0]
+            Pertur = Pertur.permute(1,2,0)
+            Pertur_50 = Pertur.cpu().detach().numpy() * 50
 
             inp = inp.detach().numpy()
             inp = cv2.cvtColor(inp, cv2.COLOR_BGR2RGB)
@@ -136,19 +129,18 @@ def run_attack():
             img = img.detach().numpy()
             img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
-            Add = cv2.add(Pertur*30, inp)
+            Add = cv2.add(Pertur_50, inp)
 
-            vis = np.concatenate((inp, img, Pertur*50, Add), axis=1)
+            vis = np.concatenate((inp, img, Pertur_50, Add), axis=1)
 
-            cv2.imwrite(os.path.join(Pertur_path, add_P), vis * 255.0)
-            cv2.imwrite(os.path.join(Pertur_path, P), Pertur*50 * 255.0)
-            cv2.imwrite(path_list[idx], img * 255.0)
+            cv2.imwrite(list, img * 255.0)
 
-            # cv2.imshow("original_image", vis)
-            # cv2.waitKey(10000)
+            cv2.imshow("original_image", vis)
+            cv2.waitKey(10000)
 
-        print("="*100)
-        print("\n")
+
+            print("="*100)
+            print("\n")
 
 
 if __name__ =="__main__":

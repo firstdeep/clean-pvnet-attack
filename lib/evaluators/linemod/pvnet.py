@@ -38,6 +38,7 @@ class Evaluator:
 
         self.proj2d = []
         self.add = []
+        self.w_add = []
         self.cmd5 = []
 
         self.icp_proj2d = []
@@ -72,11 +73,16 @@ class Evaluator:
         else:
             mean_dist = np.mean(np.linalg.norm(model_pred - model_targets, axis=-1))
 
+        #print("\ndiameter _ {}".format(diameter))
+        #print("mean_dist _ {}".format(mean_dist))
+        self.w_add.append(mean_dist)
+
         if icp:
             self.icp_add.append(mean_dist < diameter)
         else:
-            if mean_dist < diameter:
-                print(batch['path'])
+            # if mean_dist < diameter:
+            #     print("\n")
+            #     print(batch['path'])
             self.add.append(mean_dist < diameter)
 
     def cm_degree_5_metric(self, pose_pred, pose_targets, icp=False):
@@ -176,8 +182,8 @@ class Evaluator:
         anno = self.coco.loadAnns(self.coco.getAnnIds(imgIds=img_id))[0]
         kpt_3d = np.concatenate([anno['fps_3d'], [anno['center_3d']]], axis=0)
         K = np.array(anno['K'])
-
         pose_gt = np.array(anno['pose'])
+
         if cfg.test.un_pnp:
             var = output['var'][0].detach().cpu().numpy()
             pose_pred = self.uncertainty_pnp(kpt_3d, kpt_2d, var, K)
@@ -206,10 +212,12 @@ class Evaluator:
         add = np.mean(self.add)
         cmd5 = np.mean(self.cmd5)
         ap = np.mean(self.mask_ap)
+        print('Object diameter(* 0.1): {}'.format(self.diameter * 0.1))
         print('2d projections metric: {}'.format(proj2d))
         print('ADD metric: {}'.format(add))
-        print('5 cm 5 degree metric: {}'.format(cmd5))
-        print('mask ap70: {}'.format(ap))
+        print('Mean whole of ADD metric: {}'.format(np.mean(self.w_add)))
+        # print('5 cm 5 degree metric: {}'.format(cmd5))
+        # print('mask ap70: {}'.format(ap))
         if cfg.test.icp:
             print('2d projections metric after icp: {}'.format(np.mean(self.icp_proj2d)))
             print('ADD metric after icp: {}'.format(np.mean(self.icp_add)))

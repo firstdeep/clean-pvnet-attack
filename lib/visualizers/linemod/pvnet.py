@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 from lib.utils import img_utils
 import matplotlib.patches as patches
 from lib.utils.pvnet import pvnet_pose_utils
-
+import os
 
 mean = pvnet_config.mean
 std = pvnet_config.std
@@ -22,6 +22,16 @@ class Visualizer:
 
     def visualize(self, output, batch):
         inp = img_utils.unnormalize_img(batch['inp'][0], mean, std).permute(1, 2, 0)
+        pose_path = batch['path'][0].split('/')
+        index = np.int(pose_path[4][:6])
+        pose_path_gt = os.path.join(pose_path[0],pose_path[1],pose_path[2],"corner_2d_gt","{:04d}.npy".format((index)))
+        output_path = os.path.join(pose_path[0],pose_path[1],pose_path[2],"visualization","%d.png"%index)
+        path_check = os.path.join(pose_path[0],pose_path[1],pose_path[2],"visualization")
+        # original_GT = np.load(pose_path_gt)
+
+        if not os.path.isdir(path_check):
+            os.mkdir(path_check)
+
         kpt_2d = output['kpt_2d'][0].detach().cpu().numpy()
 
         img_id = int(batch['img_id'][0])
@@ -36,13 +46,17 @@ class Visualizer:
         corner_2d_gt = pvnet_pose_utils.project(corner_3d, K, pose_gt)
         corner_2d_pred = pvnet_pose_utils.project(corner_3d, K, pose_pred)
 
+
         _, ax = plt.subplots(1)
         ax.imshow(inp)
-        ax.add_patch(patches.Polygon(xy=corner_2d_gt[[0, 1, 3, 2, 0, 4, 6, 2]], fill=False, linewidth=1, edgecolor='g'))
-        ax.add_patch(patches.Polygon(xy=corner_2d_gt[[5, 4, 6, 7, 5, 1, 3, 7]], fill=False, linewidth=1, edgecolor='g'))
-        ax.add_patch(patches.Polygon(xy=corner_2d_pred[[0, 1, 3, 2, 0, 4, 6, 2]], fill=False, linewidth=1, edgecolor='b'))
-        ax.add_patch(patches.Polygon(xy=corner_2d_pred[[5, 4, 6, 7, 5, 1, 3, 7]], fill=False, linewidth=1, edgecolor='b'))
-        plt.show()
+        #ax.add_patch(patches.Polygon(xy=original_GT[[0, 1, 3, 2, 0, 4, 6, 2]], fill=False, linewidth=1, edgecolor='R'))
+        #ax.add_patch(patches.Polygon(xy=original_GT[[5, 4, 6, 7, 5, 1, 3, 7]], fill=False, linewidth=1, edgecolor='R'))
+        ax.add_patch(patches.Polygon(xy=corner_2d_gt[[0, 1, 3, 2, 0, 4, 6, 2]], fill=False, linewidth=1, edgecolor='G'))
+        ax.add_patch(patches.Polygon(xy=corner_2d_gt[[5, 4, 6, 7, 5, 1, 3, 7]], fill=False, linewidth=1, edgecolor='G'))
+        ax.add_patch(patches.Polygon(xy=corner_2d_pred[[0, 1, 3, 2, 0, 4, 6, 2]], fill=False, linewidth=1, edgecolor='B'))
+        ax.add_patch(patches.Polygon(xy=corner_2d_pred[[5, 4, 6, 7, 5, 1, 3, 7]], fill=False, linewidth=1, edgecolor='B'))
+        # plt.show()
+        plt.savefig(output_path)
 
     def visualize_train(self, output, batch):
         inp = img_utils.unnormalize_img(batch['inp'][0], mean, std).permute(1, 2, 0)
